@@ -8,20 +8,22 @@ import java.util.concurrent.ConcurrentHashMap
 
 class SimpleCache<K, V> {
     private val cache = ConcurrentHashMap<K, CacheEntry<V>>()
-    private val ttlMs = 60000 // 1 minute
+    private val ttlMs = 60000 // 1 minute // TTL is fixed and hard-coded (Cannot be tuned without redeploying)
 
     data class CacheEntry<V>(val value: V, val timestamp: Long)
 
     fun put(key: K, value: V) {
         cache[key] = CacheEntry(value, System.currentTimeMillis())
+        // No max size (Uncontrolled memory growth)
     }
 
     fun get(key: K): V? {
         val entry = cache[key]
+        // Race condition (between "cache[key]" and return other thread can call put)
         if (entry != null) {
             if (System.currentTimeMillis() - entry.timestamp < ttlMs) {
                 return entry.value
-            }
+            } // Expired entries are never removed (memory leak)
         }
         return null
     }
