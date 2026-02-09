@@ -65,6 +65,37 @@ interface Hierarchy {
  * A node is present in the filtered hierarchy iff its node ID passes the predicate and all of its ancestors pass it as well.
  */
 fun Hierarchy.filter(nodeIdPredicate: (Int) -> Boolean): Hierarchy {
-    // todo implement
-    return ArrayBasedHierarchy(IntArray(0), IntArray(0))
+    if (size == 0) {
+        return ArrayBasedHierarchy(IntArray(0), IntArray(0));
+    }
+    val resultNodeIds = ArrayList<Int>(size);
+    val resultDepths = ArrayList<Int>(size);
+
+    var blockedDepth: Int = -1;
+
+    for (i in 0 until size) {
+        val nodeId = nodeId(i);
+        val depth = depth(i);
+
+        if (blockedDepth != -1 && depth <= blockedDepth) {
+            blockedDepth = -1;
+        }
+
+        if (blockedDepth != -1) {
+            continue;
+        }
+
+        if (!nodeIdPredicate(nodeId)) {
+            blockedDepth = depth;
+            continue;
+        }
+
+        resultNodeIds.add(nodeId);
+        resultDepths.add(depth);
+    }
+
+    return ArrayBasedHierarchy(
+        resultNodeIds.toIntArray(),
+        resultDepths.toIntArray()
+    );
 }
