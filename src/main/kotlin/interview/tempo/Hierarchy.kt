@@ -1,5 +1,7 @@
 package interview.tempo
 
+import interview.tempo.hierarchy.LongArrayList
+
 /**
  * A `Hierarchy` stores an arbitrary _forest_ (an ordered collection of ordered trees)
  * as an array of node IDs in the order of DFS traversal, combined with a parallel array of node depths.
@@ -38,19 +40,19 @@ package interview.tempo
  */
 interface Hierarchy {
     /** The number of nodes in the hierarchy. */
-    val size: Int
+    val size: Long
 
     /**
      * Returns the unique ID of the node identified by the hierarchy index. The depth for this node will be `depth(index)`.
      * @param index must be non-negative and less than [size]
      * */
-    fun nodeId(index: Int): Int
+    fun nodeId(index: Long): Long
 
     /**
      * Returns the depth of the node identified by the hierarchy index. The unique ID for this node will be `nodeId(index)`.
      * @param index must be non-negative and less than [size]
      * */
-    fun depth(index: Int): Int
+    fun depth(index: Long): Long
 
     fun formatString(): String {
         return (0 until size).joinToString(
@@ -64,24 +66,24 @@ interface Hierarchy {
 /**
  * A node is present in the filtered hierarchy iff its node ID passes the predicate and all of its ancestors pass it as well.
  */
-fun Hierarchy.filter(nodeIdPredicate: (Int) -> Boolean): Hierarchy {
-    if (size == 0) {
-        return ArrayBasedHierarchy(IntArray(0), IntArray(0));
+fun Hierarchy.filter(nodeIdPredicate: (Long) -> Boolean): Hierarchy {
+    if (size == 0L) {
+        return ArrayBasedHierarchy(LongArrayList(0), LongArrayList(0));
     }
-    val resultNodeIds = ArrayList<Int>(size);
-    val resultDepths = ArrayList<Int>(size);
+    val resultNodeIds = LongArrayList<Long>(size);
+    val resultDepths = LongArrayList<Long>(size);
 
-    var blockedDepth: Int = -1;
+    var blockedDepth: Long = -1L;
 
     for (i in 0 until size) {
         val nodeId = nodeId(i);
         val depth = depth(i);
 
-        if (blockedDepth != -1 && depth <= blockedDepth) {
-            blockedDepth = -1;
+        if (blockedDepth != -1L && depth <= blockedDepth) {
+            blockedDepth = -1L;
         }
 
-        if (blockedDepth != -1) {
+        if (blockedDepth != -1L) {
             continue;
         }
 
@@ -95,7 +97,7 @@ fun Hierarchy.filter(nodeIdPredicate: (Int) -> Boolean): Hierarchy {
     }
 
     return ArrayBasedHierarchy(
-        resultNodeIds.toIntArray(),
-        resultDepths.toIntArray()
+        resultNodeIds,
+        resultDepths
     );
 }

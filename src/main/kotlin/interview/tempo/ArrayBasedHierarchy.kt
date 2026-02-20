@@ -1,12 +1,14 @@
 package interview.tempo
 
+import interview.tempo.hierarchy.LongArrayList
+
 class ArrayBasedHierarchy(
-    private val myNodeIds: IntArray,
-    private val myDepths: IntArray,
+    private val myNodeIds: LongArrayList<Long>,
+    private val myDepths: LongArrayList<Long>,
 ) : Hierarchy {
-    override val size: Int = myDepths.size
+    override val size: Long = myDepths.size()
 
-    override fun nodeId(index: Int): Int = myNodeIds[index]
+    override fun nodeId(index: Long): Long = myNodeIds.get(index)
 
-    override fun depth(index: Int): Int = myDepths[index]
+    override fun depth(index: Long): Long = myDepths.get(index)
 }
