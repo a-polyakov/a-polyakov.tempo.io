@@ -5,8 +5,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class SimpleCache<K, V> {
 
-    private final ConcurrentHashMap<K, CacheEntry<V>> cache = new ConcurrentHashMap<>();
-    private final ConcurrentLinkedQueue<K> orderQueue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentHashMap<K, CacheValue<V>> cache = new ConcurrentHashMap<>();
+    private final ConcurrentLinkedQueue<CacheKey<K>> orderQueue = new ConcurrentLinkedQueue<>();
 
     private final int maxSize;
     private final long ttlMs;
@@ -21,11 +21,13 @@ public class SimpleCache<K, V> {
                 new Runnable() {
                     @Override
                     public void run() {
-                        while (running) {
+                        while (running && !Thread.currentThread().isInterrupted()) {
                             releaseTtl();
                             try {
                                 Thread.sleep(evictionIntervalMs);
                             } catch (InterruptedException ignore) {
+                                Thread.currentThread().interrupt();
+                                break;
                             }
                         }
                     }
@@ -48,26 +50,28 @@ public class SimpleCache<K, V> {
      */
     public void put(K key, V value) {
         long now = System.currentTimeMillis();
-        cache.put(key, new CacheEntry<>(value, now));
-        orderQueue.offer(key);
+        cache.put(key, new CacheValue<>(value, now));
+        orderQueue.offer(new CacheKey<>(key, now));
 
-        while (cache.size() > maxSize) {
-            K oldestKey = orderQueue.poll();
-            if (oldestKey == null) break;
-            CacheEntry<V> entry = cache.get(oldestKey);
+        while (cache.mappingCount() > maxSize) {
+            CacheKey<K> oldest = orderQueue.poll();
+            if (oldest == null) break;
+            CacheValue<V> entry = cache.get(oldest.key());
             if (entry == null) continue;
-            cache.remove(oldestKey, entry);
+            if (entry.timestamp() == oldest.timestamp()) {
+                cache.remove(oldest.key(), entry);
+            }
         }
     }
 
-    private boolean isExpired(CacheEntry<V> e, long now) {
+    private boolean isExpired(CacheValue<V> e, long now) {
         return now - e.timestamp() >= ttlMs;
     }
 
 
     public V get(K key) {
         long now = System.currentTimeMillis();
-        CacheEntry<V> cur = cache.computeIfPresent(key, (k, entry) -> {
+        CacheValue<V> cur = cache.computeIfPresent(key, (k, entry) -> {
             return isExpired(entry, now) ? null : entry;
         });
         return (cur != null) ? cur.value() : null;
@@ -76,13 +80,18 @@ public class SimpleCache<K, V> {
     public void releaseTtl() {
         long now = System.currentTimeMillis();
         while (true) {
-            K key = orderQueue.peek();
-            if (key == null) {
+            CacheKey<K> oldest = orderQueue.peek();
+            if (oldest == null) {
                 return;
             }
 
-            CacheEntry<V> entry = cache.get(key);
+            CacheValue<V> entry = cache.get(oldest.key());
             if (entry == null) {
+                orderQueue.poll();
+                continue;
+            }
+
+            if (entry.timestamp() != oldest.timestamp()) {
                 orderQueue.poll();
                 continue;
             }
@@ -92,7 +101,7 @@ public class SimpleCache<K, V> {
             }
 
             orderQueue.poll();
-            cache.remove(key, entry);
+            cache.remove(oldest.key(), entry);
         }
     }
 
